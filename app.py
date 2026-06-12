@@ -12,8 +12,8 @@ from sklearn.preprocessing import StandardScaler
 from faker import Faker
 import random
 from datetime import datetime, timedelta
-import plotly.express as px
-import plotly.graph_objects as go
+import warnings
+warnings.filterwarnings('ignore')
 
 # ============================================
 # PAGE CONFIGURATION
@@ -24,6 +24,29 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# ============================================
+# CUSTOM CSS FOR BETTER UI
+# ============================================
+st.markdown("""
+<style>
+    .stButton button {
+        background-color: #4A90E2;
+        color: white;
+        border-radius: 5px;
+        padding: 8px 16px;
+    }
+    .stButton button:hover {
+        background-color: #357ABD;
+    }
+    .metric-card {
+        background-color: #f0f2f6;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # ============================================
 # INITIALIZATION
@@ -89,7 +112,6 @@ def generate_synthetic_data(num_users=100, transactions_per_user=100):
     
     # Generate users
     users = []
-    persona_list = list(PERSONA_PATTERNS.keys())
     
     for user_id in range(1, num_users + 1):
         if user_id <= 25:
@@ -398,23 +420,19 @@ def monte_carlo_projection(current_savings, monthly_savings, years=10, return_ra
 
 
 def get_persona_color(persona):
-    """
-    Return color for each persona
-    """
+    """Return color for each persona"""
     colors = {
-        'Saver': '#2E86AB',  # Blue
-        'Spender': '#F18F01',  # Orange
-        'Investor': '#2D6A4F',  # Green
-        'Debtor': '#D62828',  # Red
-        'Balanced': '#6B4E71'  # Purple
+        'Saver': '#2E86AB',
+        'Spender': '#F18F01',
+        'Investor': '#2D6A4F',
+        'Debtor': '#D62828',
+        'Balanced': '#6B4E71'
     }
     return colors.get(persona, '#4A90E2')
 
 
 def get_persona_icon(persona):
-    """
-    Return icon for each persona
-    """
+    """Return icon for each persona"""
     icons = {
         'Saver': '🐷',
         'Spender': '💳',
@@ -426,9 +444,7 @@ def get_persona_icon(persona):
 
 
 def get_persona_description(persona):
-    """
-    Return description for each persona
-    """
+    """Return description for each persona"""
     descriptions = {
         'Saver': "You're a natural saver who prioritizes financial security. You live below your means and consistently put money aside for the future.",
         'Spender': "You enjoy life's pleasures and aren't afraid to spend on experiences. The key is balancing enjoyment with future goals.",
@@ -439,34 +455,91 @@ def get_persona_description(persona):
     return descriptions.get(persona, "A unique financial personality with room to grow.")
 
 
+def create_spending_pie_chart(spending_by_cat, persona_color):
+    """Create a matplotlib pie chart"""
+    fig, ax = plt.subplots(figsize=(8, 6))
+    colors = plt.cm.Set2(np.linspace(0, 1, len(spending_by_cat)))
+    wedges, texts, autotexts = ax.pie(
+        spending_by_cat.values,
+        labels=spending_by_cat.index,
+        autopct='%1.1f%%',
+        colors=colors,
+        startangle=90
+    )
+    ax.set_title('Your Spending by Category', fontsize=14, fontweight='bold')
+    return fig
+
+
+def create_monthly_cashflow_chart(monthly_income, monthly_spending, persona_color):
+    """Create a matplotlib bar chart for cashflow"""
+    fig, ax = plt.subplots(figsize=(10, 5))
+    
+    months = range(len(monthly_income))
+    width = 0.35
+    
+    ax.bar([m - width/2 for m in months], monthly_income.values, width, 
+           label='Income', color='#2E86AB', alpha=0.8)
+    ax.bar([m + width/2 for m in months], monthly_spending.values, width, 
+           label='Spending', color='#F18F01', alpha=0.8)
+    
+    ax.set_xlabel('Month', fontsize=12)
+    ax.set_ylabel('Amount ($)', fontsize=12)
+    ax.set_title('Monthly Income vs Spending', fontsize=14, fontweight='bold')
+    ax.set_xticks(months)
+    ax.set_xticklabels([str(m) for m in range(1, len(months)+1)])
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    
+    return fig
+
+
+def create_monte_carlo_chart(years, medians, p10s, p90s, persona_color):
+    """Create a matplotlib line chart with confidence bands"""
+    fig, ax = plt.subplots(figsize=(10, 5))
+    
+    ax.plot(years, medians, 'b-', linewidth=2, label='Median', color=persona_color)
+    ax.fill_between(years, p10s, p90s, alpha=0.3, label='10th-90th Percentile', color=persona_color)
+    
+    ax.set_xlabel('Years', fontsize=12)
+    ax.set_ylabel('Portfolio Value ($)', fontsize=12)
+    ax.set_title('Wealth Projection (Monte Carlo Simulation)', fontsize=14, fontweight='bold')
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    
+    # Format y-axis with dollar signs
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:,.0f}'))
+    
+    return fig
+
+
 # ============================================
 # MAIN APP
 # ============================================
 def main():
     # Sidebar
     with st.sidebar:
-        st.image("https://via.placeholder.com/300x100/4A90E2/white?text=PulsePersona", use_column_width=True)
         st.title("💜 PulsePersona")
+        st.markdown("### AI-Powered Financial Companion")
         st.markdown("---")
         
         # Data generation
         st.subheader("📊 Data Settings")
-        num_users = st.slider("Number of Users", 50, 500, 100, 50)
-        transactions_per_user = st.slider("Transactions per User", 50, 200, 100, 50)
+        num_users = st.slider("Number of Users", 50, 200, 100, 25)
+        transactions_per_user = st.slider("Transactions per User", 50, 150, 100, 25)
         
-        if st.button("🔄 Generate / Refresh Data"):
+        if st.button("🔄 Generate New Data", use_container_width=True):
             with st.spinner("Generating synthetic data..."):
                 st.cache_data.clear()
                 st.rerun()
         
         st.markdown("---")
         st.subheader("📚 Course Alignment")
-        st.caption("LO1: FinTech & AI Role")
-        st.caption("LO2: ML Techniques (Clustering)")
-        st.caption("LO3: Strategic Analysis")
-        st.caption("LO4: Ethics & Privacy")
-        st.caption("LO5: Communication")
-        st.caption("LO6: Team Collaboration")
+        st.caption("✅ LO1: FinTech & AI Role")
+        st.caption("✅ LO2: ML Techniques (Clustering)")
+        st.caption("✅ LO3: Strategic Analysis")
+        st.caption("✅ LO4: Ethics & Privacy")
+        st.caption("✅ LO5: Communication")
+        st.caption("✅ LO6: Team Collaboration")
         
         st.markdown("---")
         st.caption("PulsePersona v1.0 | Capstone Project")
@@ -484,10 +557,8 @@ def main():
         features_df, kmeans, scaler = perform_clustering(features_df)
     
     # User selection
-    col1, col2, col3 = st.columns([2, 2, 1])
-    with col1:
-        user_ids = sorted(users_df['user_id'].unique())
-        selected_user = st.selectbox("Select a User", user_ids, format_func=lambda x: f"User {x}")
+    user_ids = sorted(users_df['user_id'].unique())
+    selected_user = st.selectbox("Select a User", user_ids, format_func=lambda x: f"👤 User {x}")
     
     # Get user data
     user_info = users_df[users_df['user_id'] == selected_user].iloc[0]
@@ -502,17 +573,16 @@ def main():
     income_total = user_transactions[user_transactions['amount'] > 0]['amount'].sum()
     spending_total = user_transactions[user_transactions['amount'] < 0]['amount'].abs().sum()
     current_savings = income_total - spending_total
-    monthly_savings = current_savings / 12 if current_savings > 0 else 0
+    monthly_savings = current_savings / 12 if current_savings > 0 else 50
+    savings_rate = (current_savings / income_total * 100) if income_total > 0 else 0
     
     # Persona header
     st.markdown(f"""
-    <div style='background-color: {persona_color}20; padding: 20px; border-radius: 10px; border-left: 5px solid {persona_color};'>
-        <h2>{persona_icon} {persona} Persona</h2>
-        <p style='font-size: 16px;'>{get_persona_description(persona)}</p>
+    <div style='background-color: {persona_color}20; padding: 20px; border-radius: 10px; border-left: 5px solid {persona_color}; margin-bottom: 20px;'>
+        <h2 style='margin: 0;'>{persona_icon} {persona} Persona</h2>
+        <p style='margin: 10px 0 0 0;'>{get_persona_description(persona)}</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    st.markdown("---")
     
     # Key metrics row
     col1, col2, col3, col4 = st.columns(4)
@@ -521,10 +591,9 @@ def main():
     with col2:
         st.metric("Annual Spending", f"${spending_total:,.0f}", delta=f"{(spending_total/income_total*100):.0f}% of income")
     with col3:
-        st.metric("Current Savings", f"${current_savings:,.0f}")
+        st.metric("Current Savings", f"${max(current_savings, 0):,.0f}")
     with col4:
-        savings_rate = (current_savings / income_total * 100) if income_total > 0 else 0
-        st.metric("Savings Rate", f"{savings_rate:.1f}%", delta="Good!" if savings_rate > 20 else "Below target")
+        st.metric("Savings Rate", f"{savings_rate:.1f}%", delta="Good!" if savings_rate > 20 else "Needs improvement")
     
     st.markdown("---")
     
@@ -539,39 +608,33 @@ def main():
         if len(spending_data) > 0:
             spending_by_cat = spending_data.groupby('category')['amount'].sum().abs()
             
-            fig = px.pie(
-                values=spending_by_cat.values,
-                names=spending_by_cat.index,
-                title="Your Spending by Category",
-                color_discrete_sequence=px.colors.qualitative.Set2
-            )
-            fig.update_traces(textposition='inside', textinfo='percent+label')
-            fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
+            # Create and display pie chart
+            fig_pie = create_spending_pie_chart(spending_by_cat, persona_color)
+            st.pyplot(fig_pie)
+            plt.close(fig_pie)
         else:
             st.info("No spending data available")
         
         st.subheader("📈 Monthly Cash Flow")
         
         # Monthly cash flow chart
-        user_transactions['month'] = pd.to_datetime(user_transactions['date']).dt.to_period('M')
+        user_transactions['month'] = pd.to_datetime(user_transactions['date']).dt.month
         monthly_income = user_transactions[user_transactions['amount'] > 0].groupby('month')['amount'].sum()
         monthly_spending = user_transactions[user_transactions['amount'] < 0].groupby('month')['amount'].sum().abs()
         
-        cashflow_df = pd.DataFrame({
-            'Income': monthly_income,
-            'Spending': monthly_spending
-        }).fillna(0)
+        # Ensure all months 1-12 are present
+        for month in range(1, 13):
+            if month not in monthly_income.index:
+                monthly_income[month] = 0
+            if month not in monthly_spending.index:
+                monthly_spending[month] = 0
         
-        fig = px.bar(
-            cashflow_df,
-            title="Monthly Income vs Spending",
-            labels={'value': 'Amount ($)', 'month': 'Month', 'variable': 'Type'},
-            barmode='group',
-            color_discrete_sequence=['#2E86AB', '#F18F01']
-        )
-        fig.update_layout(height=350)
-        st.plotly_chart(fig, use_container_width=True)
+        monthly_income = monthly_income.sort_index()
+        monthly_spending = monthly_spending.sort_index()
+        
+        fig_cashflow = create_monthly_cashflow_chart(monthly_income, monthly_spending, persona_color)
+        st.pyplot(fig_cashflow)
+        plt.close(fig_cashflow)
     
     with right_col:
         st.subheader("💡 Personalized Nudges")
@@ -611,38 +674,24 @@ def main():
         p10s = []
         p90s = []
         
-        for y in years:
+        progress_bar = st.progress(0)
+        for i, y in enumerate(years):
             proj = monte_carlo_projection(
                 current_savings=max(current_savings, 1000),
                 monthly_savings=max(monthly_savings, 50),
-                years=y
+                years=y,
+                n_simulations=200  # Reduced for speed
             )
             medians.append(proj['median'])
             p10s.append(proj['p10'])
             p90s.append(proj['p90'])
+            progress_bar.progress((i + 1) / len(years))
         
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=years, y=medians,
-            mode='lines', name='Median',
-            line=dict(color=persona_color, width=3)
-        ))
-        fig.add_trace(go.Scatter(
-            x=years + years[::-1],
-            y=p90s + p10s[::-1],
-            fill='toself',
-            fillcolor=f'rgba({int(persona_color[1:3], 16)}, {int(persona_color[3:5], 16)}, {int(persona_color[5:7], 16)}, 0.2)',
-            line=dict(color='rgba(255,255,255,0)'),
-            name='10th-90th Percentile'
-        ))
-        fig.update_layout(
-            title='Wealth Projection (Monte Carlo Simulation)',
-            xaxis_title='Years',
-            yaxis_title='Portfolio Value ($)',
-            height=350,
-            hovermode='x unified'
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        progress_bar.empty()
+        
+        fig_mc = create_monte_carlo_chart(years, medians, p10s, p90s, persona_color)
+        st.pyplot(fig_mc)
+        plt.close(fig_mc)
         
         col_a, col_b = st.columns(2)
         with col_a:
@@ -658,18 +707,50 @@ def main():
     insight_col1, insight_col2, insight_col3 = st.columns(3)
     
     with insight_col1:
-        top_merchant = user_transactions[user_transactions['amount'] < 0].groupby('merchant')['amount'].sum().abs().nlargest(1)
-        if len(top_merchant) > 0:
-            st.info(f"🏪 **Top Merchant:** {top_merchant.index[0]}\n${top_merchant.values[0]:,.0f} total")
+        spending_data = user_transactions[user_transactions['amount'] < 0]
+        if len(spending_data) > 0:
+            top_merchant = spending_data.groupby('merchant')['amount'].sum().abs().nlargest(1)
+            if len(top_merchant) > 0:
+                st.info(f"🏪 **Top Merchant:** {top_merchant.index[0]}\n\n${top_merchant.values[0]:,.0f} total")
+        else:
+            st.info("🏪 No merchant data")
     
     with insight_col2:
         avg_transaction = user_transactions[user_transactions['amount'] < 0]['amount'].abs().mean()
-        st.info(f"💳 **Avg Transaction:** ${avg_transaction:.2f}")
+        st.info(f"💳 **Avg Transaction:**\n\n${avg_transaction:.2f}")
     
     with insight_col3:
-        frequent_category = user_transactions[user_transactions['amount'] < 0].groupby('category').size().nlargest(1)
-        if len(frequent_category) > 0:
-            st.info(f"🔄 **Most Frequent:** {frequent_category.index[0]}\n{frequent_category.values[0]} transactions")
+        spending_data = user_transactions[user_transactions['amount'] < 0]
+        if len(spending_data) > 0:
+            frequent_category = spending_data.groupby('category').size().nlargest(1)
+            if len(frequent_category) > 0:
+                st.info(f"🔄 **Most Frequent:**\n\n{frequent_category.index[0]}\n({frequent_category.values[0]} transactions)")
+        else:
+            st.info("🔄 No category data")
+    
+    # Comparison with peers
+    st.subheader("📊 How You Compare to Peers")
+    
+    compare_col1, compare_col2, compare_col3 = st.columns(3)
+    
+    avg_savings_rate = features_df['savings_rate'].mean()
+    avg_spending = features_df['total_spending'].mean()
+    
+    with compare_col1:
+        savings_diff = savings_rate - (avg_savings_rate * 100)
+        st.metric("Savings Rate vs Avg", f"{savings_rate:.1f}%", 
+                  delta=f"{savings_diff:+.1f}% vs peer avg")
+    
+    with compare_col2:
+        spending_diff = spending_total - avg_spending
+        st.metric("Total Spending vs Avg", f"${spending_total:,.0f}",
+                  delta=f"${spending_diff:+,.0f} vs peer avg")
+    
+    with compare_col3:
+        persona_counts = features_df['persona'].value_counts()
+        pct_same_persona = (persona_counts.get(persona, 0) / len(features_df)) * 100
+        st.metric(f"Users with {persona} Persona", f"{persona_counts.get(persona, 0)} users",
+                  delta=f"{pct_same_persona:.1f}% of total")
     
     # Ethics and privacy notice
     with st.expander("🔒 Ethics, Privacy, and Responsible AI (LO4)"):
