@@ -62,15 +62,10 @@ st.markdown("""
 # QR CODE CONFIGURATION
 # ============================================
 # IMPORTANT: Update this URL with your actual Streamlit Cloud URL
-# After deploying to Streamlit Cloud, copy your app URL and paste it here
-STREAMLIT_APP_URL = "https://pulsepersona.streamlit.app"  # ← UPDATE THIS!
+STREAMLIT_APP_URL = "https://pulsepersona.streamlit.app"
 
 # Path to your QR code image file
-# Option 1: If QR code is in the same folder as app.py
 QR_CODE_PATH = "qr_code.png"
-
-# Option 2: If you have a different filename, change it here
-# QR_CODE_PATH = "pulsepersona_qr.png"
 
 # ============================================
 # INITIALIZATION
@@ -483,7 +478,7 @@ def create_spending_pie_chart(spending_by_cat, persona_color):
     """Create a matplotlib pie chart"""
     fig, ax = plt.subplots(figsize=(8, 6))
     colors = plt.cm.Set2(np.linspace(0, 1, len(spending_by_cat)))
-    wedges, texts, autotexts = ax.pie(
+    ax.pie(
         spending_by_cat.values,
         labels=spending_by_cat.index,
         autopct='%1.1f%%',
@@ -537,9 +532,7 @@ def create_monte_carlo_chart(years, medians, p10s, p90s, persona_color):
 
 
 def display_qr_code():
-    """
-    Display QR code in the sidebar for mobile access
-    """
+    """Display QR code in the sidebar for mobile access"""
     st.sidebar.markdown("---")
     st.sidebar.subheader("📱 Mobile Access")
     st.sidebar.markdown("*Scan to open on your phone*")
@@ -576,11 +569,14 @@ def display_qr_code():
         # If QR code file not found, show URL only
         st.sidebar.warning("⚠️ QR code image not found. Please ensure your QR code PNG file is in the app directory.")
         st.sidebar.info(f"📱 **App URL:**\n{STREAMLIT_APP_URL}")
-        st.sidebar.markdown(f"""
-        <div style='background-color: #f0f2f6; padding: 10px; border-radius: 5px; word-break: break-all;'>
-            <small>{STREAMLIT_APP_URL}</small>
-        </div>
-        """, unsafe_allow_html=True)
+        st.sidebar.markdown(
+            f"""
+            <div style='background-color: #f0f2f6; padding: 10px; border-radius: 5px; word-break: break-all;'>
+                <small>{STREAMLIT_APP_URL}</small>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         
         # Instructions for adding QR code
         with st.sidebar.expander("📖 How to add QR Code"):
