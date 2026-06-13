@@ -13,9 +13,6 @@ from faker import Faker
 import random
 from datetime import datetime, timedelta
 import warnings
-from PIL import Image
-import os
-
 warnings.filterwarnings('ignore')
 
 # ============================================
@@ -48,24 +45,8 @@ st.markdown("""
         border-radius: 10px;
         text-align: center;
     }
-    .qr-container {
-        text-align: center;
-        padding: 15px;
-        background-color: #ffffff;
-        border-radius: 10px;
-        margin: 10px 0;
-    }
 </style>
 """, unsafe_allow_html=True)
-
-# ============================================
-# QR CODE CONFIGURATION
-# ============================================
-# IMPORTANT: Update this URL with your actual Streamlit Cloud URL
-STREAMLIT_APP_URL = "https://pulsepersona.streamlit.app"
-
-# Path to your QR code image file
-QR_CODE_PATH = "qr_code.png"
 
 # ============================================
 # INITIALIZATION
@@ -478,7 +459,7 @@ def create_spending_pie_chart(spending_by_cat, persona_color):
     """Create a matplotlib pie chart"""
     fig, ax = plt.subplots(figsize=(8, 6))
     colors = plt.cm.Set2(np.linspace(0, 1, len(spending_by_cat)))
-    ax.pie(
+    wedges, texts, autotexts = ax.pie(
         spending_by_cat.values,
         labels=spending_by_cat.index,
         autopct='%1.1f%%',
@@ -516,7 +497,7 @@ def create_monte_carlo_chart(years, medians, p10s, p90s, persona_color):
     """Create a matplotlib line chart with confidence bands"""
     fig, ax = plt.subplots(figsize=(10, 5))
     
-    ax.plot(years, medians, linewidth=2, label='Median', color=persona_color)
+    ax.plot(years, medians, 'b-', linewidth=2, label='Median', color=persona_color)
     ax.fill_between(years, p10s, p90s, alpha=0.3, label='10th-90th Percentile', color=persona_color)
     
     ax.set_xlabel('Years', fontsize=12)
@@ -531,64 +512,297 @@ def create_monte_carlo_chart(years, medians, p10s, p90s, persona_color):
     return fig
 
 
-def display_qr_code():
-    """Display QR code in the sidebar for mobile access"""
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("📱 Mobile Access")
-    st.sidebar.markdown("*Scan to open on your phone*")
-    
-    # Try to load the QR code image
-    qr_image = None
-    
-    # Check multiple possible locations for the QR code
-    possible_paths = [
-        QR_CODE_PATH,
-        "qr_code.png",
-        "qr.png",
-        "pulsepersona_qr.png",
-        "qrcode.png",
-        os.path.join("assets", "qr_code.png"),
-        os.path.join("images", "qr_code.png"),
-    ]
-    
-    for path in possible_paths:
-        if os.path.exists(path):
-            qr_image = path
-            break
-    
-    if qr_image and os.path.exists(qr_image):
-        try:
-            img = Image.open(qr_image)
-            st.sidebar.image(img, use_container_width=True)
-            st.sidebar.caption(f"🔗 {STREAMLIT_APP_URL}")
-            st.sidebar.success("✅ QR Code loaded successfully!")
-        except Exception as e:
-            st.sidebar.error(f"Could not load QR code image: {e}")
-            st.sidebar.code(STREAMLIT_APP_URL)
-    else:
-        # If QR code file not found, show URL only
-        st.sidebar.warning("⚠️ QR code image not found. Please ensure your QR code PNG file is in the app directory.")
-        st.sidebar.info(f"📱 **App URL:**\n{STREAMLIT_APP_URL}")
-        st.sidebar.markdown(
-            f"""
-            <div style='background-color: #f0f2f6; padding: 10px; border-radius: 5px; word-break: break-all;'>
-                <small>{STREAMLIT_APP_URL}</small>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+# ============================================
+# MAIN APP
+# ============================================
+def main():
+    # Sidebar
+    with st.sidebar:
+        st.title("💜 PulsePersona")
+        st.markdown("### AI-Powered Financial Companion")
+        st.markdown("---")
         
-        # Instructions for adding QR code
-        with st.sidebar.expander("📖 How to add QR Code"):
-            st.markdown("""
-            1. Save your QR code as `qr_code.png`
-            2. Upload it to your GitHub repository
-            3. Or place it in the same folder as `app.py`
+        # Data generation
+        st.subheader("📊 Data Settings")
+        num_users = st.slider("Number of Users", 50, 200, 100, 25)
+        transactions_per_user = st.slider("Transactions per User", 50, 150, 100, 25)
+        
+        if st.button("🔄 Generate New Data", use_container_width=True):
+            with st.spinner("Generating synthetic data..."):
+                st.cache_data.clear()
+                st.rerun()
+        
+        st.markdown("---")
+        st.subheader("📚 Course Alignment")
+        st.caption("✅ LO1: FinTech & AI Role")
+        st.caption("✅ LO2: ML Techniques (Clustering)")
+        st.caption("✅ LO3: Strategic Analysis")
+        st.caption("✅ LO4: Ethics & Privacy")
+        st.caption("✅ LO5: Communication")
+        st.caption("✅ LO6: Team Collaboration")
+        
+        st.markdown("---")
+        st.caption("PulsePersona v1.0 | Capstone Project")
+    
+    # Main content
+    st.title("💜 PulsePersona")
+    st.markdown("### Your AI-Powered Financial Companion")
+    st.markdown("*Personalized insights, nudges, and projections based on your unique financial behavior*")
+    st.markdown("---")
+    
+    # Load or generate data
+    with st.spinner("Loading financial data..."):
+        users_df, transactions_df = generate_synthetic_data(num_users, transactions_per_user)
+        features_df = calculate_user_features(users_df, transactions_df)
+        features_df, kmeans, scaler = perform_clustering(features_df)
+    
+    # User selection
+    user_ids = sorted(users_df['user_id'].unique())
+    selected_user = st.selectbox("Select a User", user_ids, format_func=lambda x: f"👤 User {x}")
+    
+    # Get user data
+    user_info = users_df[users_df['user_id'] == selected_user].iloc[0]
+    user_features = features_df[features_df['user_id'] == selected_user].iloc[0]
+    user_transactions = transactions_df[transactions_df['user_id'] == selected_user]
+    
+    persona = user_features['persona']
+    persona_color = get_persona_color(persona)
+    persona_icon = get_persona_icon(persona)
+    
+    # Calculate financial metrics
+    income_total = user_transactions[user_transactions['amount'] > 0]['amount'].sum()
+    spending_total = user_transactions[user_transactions['amount'] < 0]['amount'].abs().sum()
+    current_savings = income_total - spending_total
+    monthly_savings = current_savings / 12 if current_savings > 0 else 50
+    savings_rate = (current_savings / income_total * 100) if income_total > 0 else 0
+    
+    # Persona header
+    st.markdown(f"""
+    <div style='background-color: {persona_color}20; padding: 20px; border-radius: 10px; border-left: 5px solid {persona_color}; margin-bottom: 20px;'>
+        <h2 style='margin: 0;'>{persona_icon} {persona} Persona</h2>
+        <p style='margin: 10px 0 0 0;'>{get_persona_description(persona)}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Key metrics row
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Annual Income", f"${income_total:,.0f}")
+    with col2:
+        st.metric("Annual Spending", f"${spending_total:,.0f}", delta=f"{(spending_total/income_total*100):.0f}% of income")
+    with col3:
+        st.metric("Current Savings", f"${max(current_savings, 0):,.0f}")
+    with col4:
+        st.metric("Savings Rate", f"{savings_rate:.1f}%", delta="Good!" if savings_rate > 20 else "Needs improvement")
+    
+    st.markdown("---")
+    
+    # Main dashboard - two columns
+    left_col, right_col = st.columns([1, 1])
+    
+    with left_col:
+        st.subheader("📊 Spending Breakdown")
+        
+        # Spending pie chart
+        spending_data = user_transactions[user_transactions['amount'] < 0]
+        if len(spending_data) > 0:
+            spending_by_cat = spending_data.groupby('category')['amount'].sum().abs()
             
-            **To generate a QR code:**
-            - Use QR Code Generator (qr-code-generator.com)
-            - Or Python: `pip install qrcode[pil]`
-            ```python
-            import qrcode
-            img = qrcode.make("YOUR_APP_URL")
-            img.save("qr_code.png")
+            # Create and display pie chart
+            fig_pie = create_spending_pie_chart(spending_by_cat, persona_color)
+            st.pyplot(fig_pie)
+            plt.close(fig_pie)
+        else:
+            st.info("No spending data available")
+        
+        st.subheader("📈 Monthly Cash Flow")
+        
+        # Monthly cash flow chart
+        user_transactions['month'] = pd.to_datetime(user_transactions['date']).dt.month
+        monthly_income = user_transactions[user_transactions['amount'] > 0].groupby('month')['amount'].sum()
+        monthly_spending = user_transactions[user_transactions['amount'] < 0].groupby('month')['amount'].sum().abs()
+        
+        # Ensure all months 1-12 are present
+        for month in range(1, 13):
+            if month not in monthly_income.index:
+                monthly_income[month] = 0
+            if month not in monthly_spending.index:
+                monthly_spending[month] = 0
+        
+        monthly_income = monthly_income.sort_index()
+        monthly_spending = monthly_spending.sort_index()
+        
+        fig_cashflow = create_monthly_cashflow_chart(monthly_income, monthly_spending, persona_color)
+        st.pyplot(fig_cashflow)
+        plt.close(fig_cashflow)
+    
+    with right_col:
+        st.subheader("💡 Personalized Nudges")
+        
+        nudges = generate_nudges(user_features, persona, user_transactions)
+        
+        for nudge in nudges:
+            st.markdown(f"""
+            <div style='background-color: #f0f2f6; padding: 15px; border-radius: 10px; margin-bottom: 15px;'>
+                <h4 style='margin: 0;'>{nudge['icon']} {nudge['title']}</h4>
+                <p style='margin: 10px 0;'>{nudge['message']}</p>
+                <button style='background-color: {persona_color}; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;'>
+                    {nudge['action']}
+                </button>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.subheader("🎯 Wealth Projection")
+        
+        # Monte Carlo simulation
+        with st.spinner("Running Monte Carlo simulation..."):
+            projection_10yr = monte_carlo_projection(
+                current_savings=max(current_savings, 1000),
+                monthly_savings=max(monthly_savings, 50),
+                years=10
+            )
+            
+            projection_20yr = monte_carlo_projection(
+                current_savings=max(current_savings, 1000),
+                monthly_savings=max(monthly_savings, 50),
+                years=20
+            )
+        
+        # Monte Carlo chart
+        years = list(range(1, 21))
+        medians = []
+        p10s = []
+        p90s = []
+        
+        progress_bar = st.progress(0)
+        for i, y in enumerate(years):
+            proj = monte_carlo_projection(
+                current_savings=max(current_savings, 1000),
+                monthly_savings=max(monthly_savings, 50),
+                years=y,
+                n_simulations=200  # Reduced for speed
+            )
+            medians.append(proj['median'])
+            p10s.append(proj['p10'])
+            p90s.append(proj['p90'])
+            progress_bar.progress((i + 1) / len(years))
+        
+        progress_bar.empty()
+        
+        fig_mc = create_monte_carlo_chart(years, medians, p10s, p90s, persona_color)
+        st.pyplot(fig_mc)
+        plt.close(fig_mc)
+        
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.metric("10-Year Median", f"${projection_10yr['median']:,.0f}")
+        with col_b:
+            st.metric("20-Year Median", f"${projection_20yr['median']:,.0f}")
+    
+    st.markdown("---")
+    
+    # Spending insights section
+    st.subheader("🔍 Deep Dive: Spending Insights")
+    
+    insight_col1, insight_col2, insight_col3 = st.columns(3)
+    
+    with insight_col1:
+        spending_data = user_transactions[user_transactions['amount'] < 0]
+        if len(spending_data) > 0:
+            top_merchant = spending_data.groupby('merchant')['amount'].sum().abs().nlargest(1)
+            if len(top_merchant) > 0:
+                st.info(f"🏪 **Top Merchant:** {top_merchant.index[0]}\n\n${top_merchant.values[0]:,.0f} total")
+        else:
+            st.info("🏪 No merchant data")
+    
+    with insight_col2:
+        avg_transaction = user_transactions[user_transactions['amount'] < 0]['amount'].abs().mean()
+        st.info(f"💳 **Avg Transaction:**\n\n${avg_transaction:.2f}")
+    
+    with insight_col3:
+        spending_data = user_transactions[user_transactions['amount'] < 0]
+        if len(spending_data) > 0:
+            frequent_category = spending_data.groupby('category').size().nlargest(1)
+            if len(frequent_category) > 0:
+                st.info(f"🔄 **Most Frequent:**\n\n{frequent_category.index[0]}\n({frequent_category.values[0]} transactions)")
+        else:
+            st.info("🔄 No category data")
+    
+    # Comparison with peers
+    st.subheader("📊 How You Compare to Peers")
+    
+    compare_col1, compare_col2, compare_col3 = st.columns(3)
+    
+    avg_savings_rate = features_df['savings_rate'].mean()
+    avg_spending = features_df['total_spending'].mean()
+    
+    with compare_col1:
+        savings_diff = savings_rate - (avg_savings_rate * 100)
+        st.metric("Savings Rate vs Avg", f"{savings_rate:.1f}%", 
+                  delta=f"{savings_diff:+.1f}% vs peer avg")
+    
+    with compare_col2:
+        spending_diff = spending_total - avg_spending
+        st.metric("Total Spending vs Avg", f"${spending_total:,.0f}",
+                  delta=f"${spending_diff:+,.0f} vs peer avg")
+    
+    with compare_col3:
+        persona_counts = features_df['persona'].value_counts()
+        pct_same_persona = (persona_counts.get(persona, 0) / len(features_df)) * 100
+        st.metric(f"Users with {persona} Persona", f"{persona_counts.get(persona, 0)} users",
+                  delta=f"{pct_same_persona:.1f}% of total")
+    
+    # Ethics and privacy notice
+    with st.expander("🔒 Ethics, Privacy, and Responsible AI (LO4)"):
+        st.markdown("""
+        ### Our Commitment to Responsible AI
+        
+        **Privacy by Design**
+        - All data in this demo is synthetically generated
+        - No real user data is stored or transmitted
+        - In production, we implement end-to-end encryption and user consent
+        
+        **Transparency**
+        - You always know why a nudge was shown to you
+        - All recommendations come with clear explanations
+        - No dark patterns or manipulative designs
+        
+        **Fairness & Bias Prevention**
+        - Persona models are audited for demographic bias
+        - Credit-related nudges are regulated and compliant
+        - Appeals process for disputed recommendations
+        
+        **Financial Wellness Focus**
+        - Nudges prioritize user benefit over bank profit
+        - No high-risk product recommendations without warnings
+        - Educational content always available
+        """)
+    
+    # Download buttons
+    st.markdown("---")
+    col_d1, col_d2, col_d3 = st.columns(3)
+    with col_d1:
+        st.download_button(
+            label="📥 Download User Data (CSV)",
+            data=users_df.to_csv(index=False),
+            file_name="pulsepersona_users.csv",
+            mime="text/csv"
+        )
+    with col_d2:
+        st.download_button(
+            label="📥 Download Transactions (CSV)",
+            data=transactions_df.to_csv(index=False),
+            file_name="pulsepersona_transactions.csv",
+            mime="text/csv"
+        )
+    with col_d3:
+        st.download_button(
+            label="📥 Download Features (CSV)",
+            data=features_df.to_csv(index=False),
+            file_name="pulsepersona_features.csv",
+            mime="text/csv"
+        )
+
+
+if __name__ == "__main__":
+    main()
